@@ -17,6 +17,14 @@ S_max = 255
 V_min = 190
 V_max = 255
 
+P_angle = 0.1
+I_angle = 0.1
+D_angle = 0.1
+
+P_pos = 0.1
+I_pos = 0.1
+D_pos = 0.1
+
 def show(mat):
     plt.imshow(cv.cvtColor(mat.astype(np.uint8), cv.COLOR_BGR2RGB))
 
@@ -40,7 +48,6 @@ def undistort(img, cMat, ncMat, dist, roi):
     dst = cv.undistort(img, cMat, dist, None, ncMat)
     x,y,w,h = roi
     dst = dst[y:y+h,x:x+w]
-
     return dst
 
 def perspectiveTransform(image, pts):
@@ -91,6 +98,9 @@ def houghlines(binary_image, draw_image, minimum_votes):
             cv.line(draw_image, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3,  cv.LINE_AA)
         return sum(angular_deviation)/len(angular_deviation), lowest_point
 
+
+## Camera calibration process
+
 chessboardSize = (4,7)
 calibrationImageSize=()
 
@@ -125,6 +135,11 @@ h,w = img.shape[:2]
 newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
 capture = cv.VideoCapture('test.mp4')
+
+CAPTURE_SHAPE = capture.read()[1].shape
+
+self_pos = (CAPTURE_SHAPE[1]//2, CAPTURE_SHAPE[0])
+self_angle = 0
 
 while True:
     ret, frame = capture.read()
@@ -162,28 +177,18 @@ while True:
 
     # draw current trajectory
 
-    contoursbgr = cv.arrowedLine(contoursbgr, (contoursbgr.shape[1]//2, contoursbgr.shape[0]), (contoursbgr.shape[1]//2, contoursbgr.shape[0]//2), (0,0,255))
+    contoursbgr = cv.arrowedLine(contoursbgr, self_pos, (int(self_pos[0]+DRAW_PATH_LENGTH*np.cos(self_angle-np.pi/2)), int(self_pos[1]+DRAW_PATH_LENGTH*np.sin(self_angle-np.pi/2))), (0,0,255))
 
-    print("Trajectory delta:", angle, marker[0]-contoursbgr.shape[1])
+    angle_err = angle
+    pos_err = marker[0]-contoursbgr.shape[1]
+    print("error:", angle_err, pos_err)
+
+    
 
     cv.imshow('frame', frame)
     cv.imshow('warped contours', contoursbgr)
 
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
