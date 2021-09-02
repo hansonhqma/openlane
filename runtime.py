@@ -2,6 +2,7 @@ import os
 import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import deque
 
 # Hyperparameters
 
@@ -17,12 +18,12 @@ S_max = 255
 V_min = 190
 V_max = 255
 
-P_angle = 0.1
-I_angle = 0.1
+P_angle = 0.5
+I_angle = 0.001
 D_angle = 0.1
 
-P_pos = 0.1
-I_pos = 0.1
+P_pos = 0.2
+I_pos = 0.01
 D_pos = 0.1
 
 def show(mat):
@@ -70,9 +71,6 @@ def perspectiveTransform(image, pts):
 
     dst = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]])
 
-    # dst = np.array([[0, 0],[maxWidth - 1, 0],[maxWidth - 1, maxHeight - 1],[0, maxHeight - 1]], dtype = "float32")
-
-
     M = cv.getPerspectiveTransform(pts, dst)
     warped = cv.warpPerspective(image, M, (image.shape[1], image.shape[0]))
 
@@ -94,7 +92,10 @@ def houghlines(binary_image, draw_image, minimum_votes):
             if l[3]>lowest_y:
                 lowest_point = [l[2], l[3]]
                 lowest_y = l[3]
-            angular_deviation.append(np.arctan(dx/dy))
+            if dy==0:
+                angular_deviation.append(np.pi/2)
+            else:
+                angular_deviation.append(np.arctan(dx/dy))
             cv.line(draw_image, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3,  cv.LINE_AA)
         return sum(angular_deviation)/len(angular_deviation), lowest_point
 
@@ -138,8 +139,13 @@ capture = cv.VideoCapture('test.mp4')
 
 CAPTURE_SHAPE = capture.read()[1].shape
 
-self_pos = (CAPTURE_SHAPE[1]//2, CAPTURE_SHAPE[0])
+self_pos = ()
 self_angle = 0
+
+int_pos = deque(maxlen=20)
+int_angle = deque(maxlen=50)
+prev_pos = -1
+prev_angle = -1
 
 while True:
     ret, frame = capture.read()
@@ -167,26 +173,53 @@ while True:
     
     
     # get hough lines and estimate target trajectory
-    packet  = houghlines(warped_contours, contoursbgr, 100)
+    packet  = houghlines(warped_contours, warped_frame, 100)
     if packet is not None:
         angle, marker = packet
 
     # draw target trajectory
-    contoursbgr = cv.drawMarker(contoursbgr, marker, (0,255,0))
-    contoursbgr = cv.arrowedLine(contoursbgr, marker, [int(marker[0]+DRAW_PATH_LENGTH*np.cos(angle+np.pi/2)), int(marker[1]-DRAW_PATH_LENGTH*np.sin(angle+np.pi/2))], (0,255,0))
+    cv.drawMarker(warped_frame, marker, (0,255,0))
+    cv.arrowedLine(warped_frame, marker, [int(marker[0]+DRAW_PATH_LENGTH*np.cos(angle+np.pi/2)), int(marker[1]-DRAW_PATH_LENGTH*np.sin(angle+np.pi/2))], (0,255,0), 2)
 
+    
     # draw current trajectory
 
-    contoursbgr = cv.arrowedLine(contoursbgr, self_pos, (int(self_pos[0]+DRAW_PATH_LENGTH*np.cos(self_angle-np.pi/2)), int(self_pos[1]+DRAW_PATH_LENGTH*np.sin(self_angle-np.pi/2))), (0,0,255))
+    if len(self_pos)==0:
+        self_pos = [warped_frame.shape[1]//2, warped_frame.shape[0]]
 
-    angle_err = angle
-    pos_err = marker[0]-contoursbgr.shape[1]
-    print("error:", angle_err, pos_err)
+    end_point = (int(self_pos[0]+DRAW_PATH_LENGTH*np.cos(self_angle+np.pi/2)), int(self_pos[1]-DRAW_PATH_LENGTH*np.sin(self_angle+np.pi/2)))
+    warped_frame= cv.arrowedLine(warped_frame, self_pos, end_point, (0,0,255), 3)
+
+    # calculate error
+
+    angle_err = angle-self_angle
+    pos_err = marker[0]-self_pos[0]
+
+    # apply pid
+
+    if prev_angle==-1:
+        d_angle = 0
+    else:
+        d_angle = angle_err-prev_angle
+    if prev_pos==-1:
+        d_pos = 0
+    else:
+        d_pos = pos_err-prev_pos
+
+    self_angle += (P_angle*angle_err + I_angle*sum(int_angle) + D_angle*d_angle)
+    self_pos[0] += (P_pos*pos_err + I_pos*sum(int_pos) + D_pos*d_pos)
+    self_pos[0] = int(self_pos[0])
+
+    
+    prev_pos = pos_err
+    prev_angle = angle_err
+    int_angle.append(angle_err)
+    int_pos.append(pos_err)
 
     
 
     cv.imshow('frame', frame)
-    cv.imshow('warped contours', contoursbgr)
+    cv.imshow('warped contours', warped_frame)
 
     if cv.waitKey(1) & 0xFF==ord('q'):
         break

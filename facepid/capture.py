@@ -79,8 +79,12 @@ while True:
     # calculate step
     if(x_prev_err==-1):
         delta_x = 0
+    else:
+        delta_x = x_err-x_prev_err
     if(y_prev_err==-1):
         delta_y = 0
+    else:
+        delta_y = y_err-y_prev_err
     x_step = PRO*x_err + INT*x_int_err + DER*delta_x
     y_step = PRO*y_err + INT*y_int_err + DER*delta_y
 
