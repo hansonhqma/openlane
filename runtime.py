@@ -6,6 +6,16 @@ import numpy as np
 # Hyperparameters
 
 DISPLAY_RESOLUTION_SCALING = 0.5
+DRAW_PATH_LENGTH = 150
+
+lane_fov = [[590,550],[690,550], [1000,720],[200,720]]
+
+H_min = 0
+H_max = 159
+S_min = 0
+S_max = 255
+V_min = 190
+V_max = 255
 
 def show(mat):
     plt.imshow(cv.cvtColor(mat.astype(np.uint8), cv.COLOR_BGR2RGB))
@@ -61,12 +71,25 @@ def perspectiveTransform(image, pts):
 
     return warped
 
-def houghlines(binary_image, draw_image):
-    lines = cv.HoughLinesP(binary_image, 1, np.pi / 180, 200, None, 50, 10)
+def houghlines(binary_image, draw_image, minimum_votes):
+    lines = cv.HoughLinesP(binary_image, 1, np.pi / 180, minimum_votes, None, 50, 10)
     if lines is not None:
+        angular_deviation = []
+        lowest_point = []
+        lowest_y = 0 # image y is flipped, so visually lowest is max value
         for i in range(len(lines)):
             l = lines[i][0]
+            dx = l[0]-l[2]
+            dy = l[1]-l[3]
+            if l[1]>lowest_y:
+                lowest_point = [l[0], l[1]]
+                lowest_y = l[1]
+            if l[3]>lowest_y:
+                lowest_point = [l[2], l[3]]
+                lowest_y = l[3]
+            angular_deviation.append(np.arctan(dx/dy))
             cv.line(draw_image, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3,  cv.LINE_AA)
+        return sum(angular_deviation)/len(angular_deviation), lowest_point
 
 chessboardSize = (4,7)
 calibrationImageSize=()
@@ -101,7 +124,7 @@ img = cv.imread('calibration images/calib1.jpg')
 h,w = img.shape[:2]
 newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-capture = cv.VideoCapture('test2.mp4')
+capture = cv.VideoCapture('test.mp4')
 
 while True:
     ret, frame = capture.read()
@@ -110,34 +133,41 @@ while True:
 
     #frame = undistort(frame, cameraMatrix, newCameraMatrix, dist, roi)
 
-    pts = np.array([[600,300],[700,300], [1200,700],[0,700]]).astype(np.float32)
+    pts = np.array(lane_fov).astype(np.float32)
 
     warped_frame = perspectiveTransform(frame, pts)
     frame = cv.polylines(frame, [pts.reshape((-1,1,2)).astype(np.int32)], True, (255,0,255), 3)
 
     # get binary image, find contours and draw
-    ret, warped_binary = cv.threshold(cv.cvtColor(warped_frame, cv.COLOR_BGR2GRAY), 190,255,0)
+    warped_binary = cv.inRange(cv.cvtColor(warped_frame, cv.COLOR_RGB2HSV), (H_min, S_min, V_min), (H_max, S_max, V_max))
 
     contours, h = cv.findContours(warped_binary, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     warped_contours = cv.drawContours(np.zeros(warped_binary.shape, dtype=np.uint8), contours, -1, (255,255,255), 3)
 
-    # draw hough lines
-
-    # houghlines(warped_contours, warped_frame)
-
-    # using rastering to detect lane lines
-
-    # take histogram of bottom third of contour imagej
-
-
-
-
     # resizing and display
     frame = fastresize(frame)
+    warped_frame = fastresize(warped_frame)
     warped_contours = fastresize(warped_contours)
+    contoursbgr = cv.cvtColor(warped_contours, cv.COLOR_GRAY2BGR)
+    
+    
+    # get hough lines and estimate target trajectory
+    packet  = houghlines(warped_contours, contoursbgr, 100)
+    if packet is not None:
+        angle, marker = packet
+
+    # draw target trajectory
+    contoursbgr = cv.drawMarker(contoursbgr, marker, (0,255,0))
+    contoursbgr = cv.arrowedLine(contoursbgr, marker, [int(marker[0]+DRAW_PATH_LENGTH*np.cos(angle+np.pi/2)), int(marker[1]-DRAW_PATH_LENGTH*np.sin(angle+np.pi/2))], (0,255,0))
+
+    # draw current trajectory
+
+    contoursbgr = cv.arrowedLine(contoursbgr, (contoursbgr.shape[1]//2, contoursbgr.shape[0]), (contoursbgr.shape[1]//2, contoursbgr.shape[0]//2), (0,0,255))
+
+    print("Trajectory delta:", angle, marker[0]-contoursbgr.shape[1])
 
     cv.imshow('frame', frame)
-    cv.imshow('warped contours', fastresize(warped_binary))
+    cv.imshow('warped contours', contoursbgr)
 
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
