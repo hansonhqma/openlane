@@ -3,8 +3,15 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Hyperparameters
+
+DISPLAY_RESOLUTION_SCALING = 0.5
+
 def show(mat):
     plt.imshow(cv.cvtColor(mat.astype(np.uint8), cv.COLOR_BGR2RGB))
+
+def fastresize(frame):
+    return cv.resize(frame, (int(frame.shape[1]*DISPLAY_RESOLUTION_SCALING), int(frame.shape[0]*DISPLAY_RESOLUTION_SCALING)))
     
 def mask(imgshape):
     height = imgshape[0]
@@ -37,12 +44,29 @@ def perspectiveTransform(image, pts):
     heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
     maxHeight = max(int(heightA), int(heightB))
 
-    dst = np.array([[0, 0],[maxWidth - 1, 0],[maxWidth - 1, maxHeight - 1],[0, maxHeight - 1]], dtype = "float32")
+    # get new bounding box with respect to image size
+
+    x_min = min(tl[0], bl[0])
+    x_max = max(tr[0], br[0])
+    y_min = min(tl[1], tr[1])
+    y_max = max(bl[1], br[1])
+
+    dst = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]])
+
+    # dst = np.array([[0, 0],[maxWidth - 1, 0],[maxWidth - 1, maxHeight - 1],[0, maxHeight - 1]], dtype = "float32")
+
 
     M = cv.getPerspectiveTransform(pts, dst)
-    warped = cv.warpPerspective(image, M, (maxWidth, maxHeight))
+    warped = cv.warpPerspective(image, M, (image.shape[1], image.shape[0]))
 
     return warped
+
+def houghlines(binary_image, draw_image):
+    lines = cv.HoughLinesP(binary_image, 1, np.pi / 180, 200, None, 50, 10)
+    if lines is not None:
+        for i in range(len(lines)):
+            l = lines[i][0]
+            cv.line(draw_image, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3,  cv.LINE_AA)
 
 chessboardSize = (4,7)
 calibrationImageSize=()
@@ -86,26 +110,34 @@ while True:
 
     #frame = undistort(frame, cameraMatrix, newCameraMatrix, dist, roi)
 
-    pts = np.array([[450,400],[730,400], [1130,700],[230,700]]).astype(np.float32)
+    pts = np.array([[600,300],[700,300], [1200,700],[0,700]]).astype(np.float32)
 
     warped_frame = perspectiveTransform(frame, pts)
-    frame = cv.polylines(frame, [pts.reshape((-1,1,2)).astype(np.int32)], True, (255,0,255))
+    frame = cv.polylines(frame, [pts.reshape((-1,1,2)).astype(np.int32)], True, (255,0,255), 3)
 
-    ret, warped_frame = cv.threshold(cv.cvtColor(warped_frame, cv.COLOR_BGR2GRAY), 100,255,0)
+    # get binary image, find contours and draw
+    ret, warped_binary = cv.threshold(cv.cvtColor(warped_frame, cv.COLOR_BGR2GRAY), 190,255,0)
 
-    contours, h = cv.findContours(warped_frame, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    warped_frame = cv.drawContours(np.zeros(warped_frame.shape, dtype=np.uint8), contours, -1, (255,255,255), 3)
+    contours, h = cv.findContours(warped_binary, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    warped_contours = cv.drawContours(np.zeros(warped_binary.shape, dtype=np.uint8), contours, -1, (255,255,255), 3)
 
-    lines = cv.HoughLinesP(warped_frame, 1, np.pi / 180, 200, None, 50, 10)
-    warped_frame = cv.cvtColor(warped_frame, cv.COLOR_GRAY2RGB)
-    if lines is not None:
-        for i in range(0, len(lines)):
-            l = lines[i][0]
-            cv.line(warped_frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 1,  cv.LINE_AA)
+    # draw hough lines
 
+    # houghlines(warped_contours, warped_frame)
+
+    # using rastering to detect lane lines
+
+    # take histogram of bottom third of contour imagej
+
+
+
+
+    # resizing and display
+    frame = fastresize(frame)
+    warped_contours = fastresize(warped_contours)
 
     cv.imshow('frame', frame)
-    cv.imshow('warped frame', warped_frame)
+    cv.imshow('warped contours', fastresize(warped_binary))
 
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
