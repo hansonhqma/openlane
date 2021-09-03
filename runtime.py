@@ -7,11 +7,11 @@ from collections import deque
 # Hyperparameters
 
 DISPLAY_RESOLUTION_SCALING = 0.5
-DRAW_PATH_LENGTH = 190
+DRAW_PATH_LENGTH = 100
 
 lane_fov = [[590,550],[690,550], [1000,720],[200,720]]
 
-hough_voting_minimum = 120
+hough_voting_minimum = 70
 
 H_min = 0
 H_max = 180
