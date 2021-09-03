@@ -7,16 +7,18 @@ from collections import deque
 # Hyperparameters
 
 DISPLAY_RESOLUTION_SCALING = 0.5
-DRAW_PATH_LENGTH = 150
+DRAW_PATH_LENGTH = 190
 
 lane_fov = [[590,550],[690,550], [1000,720],[200,720]]
 
+hough_voting_minimum = 120
+
 H_min = 0
-H_max = 159
-S_min = 0
+H_max = 180
+S_min = 92
 S_max = 255
-V_min = 190
-V_max = 255
+V_min = 0
+V_max = 60
 
 P_angle = 0.5
 I_angle = 0.001
@@ -135,7 +137,7 @@ img = cv.imread('calibration images/calib1.jpg')
 h,w = img.shape[:2]
 newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-capture = cv.VideoCapture('test.mp4')
+capture = cv.VideoCapture('test2.mov')
 
 CAPTURE_SHAPE = capture.read()[1].shape
 
@@ -147,6 +149,9 @@ int_angle = deque(maxlen=50)
 prev_pos = -1
 prev_angle = -1
 
+angle = 0
+marker = []
+
 while True:
     ret, frame = capture.read()
     if not ret:
@@ -156,7 +161,9 @@ while True:
 
     pts = np.array(lane_fov).astype(np.float32)
 
-    warped_frame = perspectiveTransform(frame, pts)
+    #warped_frame = perspectiveTransform(frame, pts)
+    warped_frame = frame
+    warped_frame = undistort(warped_frame, cameraMatrix, newCameraMatrix, dist, roi)
     frame = cv.polylines(frame, [pts.reshape((-1,1,2)).astype(np.int32)], True, (255,0,255), 3)
 
     # get binary image, find contours and draw
@@ -173,7 +180,7 @@ while True:
     
     
     # get hough lines and estimate target trajectory
-    packet  = houghlines(warped_contours, warped_frame, 100)
+    packet  = houghlines(warped_contours, warped_frame, hough_voting_minimum)
     if packet is not None:
         angle, marker = packet
 
@@ -218,7 +225,7 @@ while True:
 
     
 
-    cv.imshow('frame', frame)
+    cv.imshow('frame', warped_binary)
     cv.imshow('warped contours', warped_frame)
 
     if cv.waitKey(1) & 0xFF==ord('q'):

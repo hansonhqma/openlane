@@ -8,7 +8,7 @@ def undistort(img, cMat, ncMat, dist, roi):
     dst = dst[y:y+h,x:x+w]
     return dst
 
-capture = cv.VideoCapture(1)
+capture = cv.VideoCapture(0)
 
 ## Camera calibration process
 
