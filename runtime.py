@@ -31,7 +31,7 @@ D_pos = 0.1
 def show(mat):
     plt.imshow(cv.cvtColor(mat.astype(np.uint8), cv.COLOR_BGR2RGB))
 
-def fastresize(frame):
+def speedresize(frame):
     return cv.resize(frame, (int(frame.shape[1]*DISPLAY_RESOLUTION_SCALING), int(frame.shape[0]*DISPLAY_RESOLUTION_SCALING)))
     
 def mask(imgshape):
@@ -53,7 +53,7 @@ def undistort(img, cMat, ncMat, dist, roi):
     dst = dst[y:y+h,x:x+w]
     return dst
 
-def perspectiveTransform(image, pts):
+def perspectiveTransform(image, pts, reverse=False):
     (tl, tr, br, bl) = pts
 
     widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
@@ -73,12 +73,26 @@ def perspectiveTransform(image, pts):
 
     dst = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]])
 
-    M = cv.getPerspectiveTransform(pts, dst)
+    if(reverse):
+        M = cv.getPerspectiveTransform(dst, pts)
+    else:
+        M = cv.getPerspectiveTransform(pts, dst)
+
     warped = cv.warpPerspective(image, M, (image.shape[1], image.shape[0]))
 
     return warped
 
 def houghlines(binary_image, draw_image, minimum_votes):
+    """ Probablistic hough transform that returns estimated trajectory
+    :param:
+        Binary image
+        image to draw lines on
+        minimum hough space votes
+        
+    :return:
+        average angular trajectory
+        lowest x coordinate
+    """
     lines = cv.HoughLinesP(binary_image, 1, np.pi / 180, minimum_votes, None, 50, 10)
     if lines is not None:
         angular_deviation = []
@@ -137,7 +151,7 @@ img = cv.imread('calibration images/calib1.jpg')
 h,w = img.shape[:2]
 newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-capture = cv.VideoCapture('test2.mov')
+capture = cv.VideoCapture('test.mp4')
 
 CAPTURE_SHAPE = capture.read()[1].shape
 
@@ -161,8 +175,7 @@ while True:
 
     pts = np.array(lane_fov).astype(np.float32)
 
-    #warped_frame = perspectiveTransform(frame, pts)
-    warped_frame = frame
+    warped_frame = perspectiveTransform(frame, pts)
     warped_frame = undistort(warped_frame, cameraMatrix, newCameraMatrix, dist, roi)
     frame = cv.polylines(frame, [pts.reshape((-1,1,2)).astype(np.int32)], True, (255,0,255), 3)
 
@@ -173,14 +186,15 @@ while True:
     warped_contours = cv.drawContours(np.zeros(warped_binary.shape, dtype=np.uint8), contours, -1, (255,255,255), 3)
 
     # resizing and display
-    frame = fastresize(frame)
-    warped_frame = fastresize(warped_frame)
-    warped_contours = fastresize(warped_contours)
+    frame = speedresize(frame)
+    warped_frame = speedresize(warped_frame)
+    warped_contours = speedresize(warped_contours)
     contoursbgr = cv.cvtColor(warped_contours, cv.COLOR_GRAY2BGR)
     
     
     # get hough lines and estimate target trajectory
     packet  = houghlines(warped_contours, warped_frame, hough_voting_minimum)
+    print(packet)
     if packet is not None:
         angle, marker = packet
 
@@ -223,11 +237,9 @@ while True:
     int_angle.append(angle_err)
     int_pos.append(pos_err)
 
-    
 
     cv.imshow('frame', warped_binary)
     cv.imshow('warped contours', warped_frame)
-
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
 
