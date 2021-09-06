@@ -7,20 +7,26 @@ def show(img, caption="frame"):
     cv.waitKey(0)
     cv.destroyAllWindows()
 
-def mask(imgshape):
+def drawMask(image, pts, outline_source = False):
+    mask = cv.fillPoly(np.zeros(image.shape), pts=[pts], color=(255,255,255)).astype(np.uint8)
+    if outline_source:
+        image = cv.polylines(image, [pts.reshape((-1,1,2))], True, (0,255,0), 2)
+    return cv.bitwise_and(image, mask)
+
+def quickMask(imgshape):
     height = imgshape[0]
     width = imgshape[1]
     maskpts = np.array([[width//3, height//2], [2*width//3, height//2], [3*width//4, height], [width//4, height]])
     return cv.fillPoly(np.zeros(imgshape), pts=[maskpts], color=(255,255,255)).astype(np.uint8)
 
-def correctionmask(imgshape, padding):
+def quickCorrectionmask(imgshape, padding):
     padding = int(padding)
     height = imgshape[0]
     width = imgshape[1]
     maskpts = np.array([[width//3+padding, height//2+padding], [2*width//3-padding, height//2+padding], [3*width//4+padding, height], [width//4-padding, height]])
     return cv.fillPoly(np.zeros(imgshape), pts=[maskpts], color=(255,255,255)).astype(np.uint8)
 
-def speedresize(frame, DISPLAY_RESOLUTION_SCALING):
+def fastresize(frame, DISPLAY_RESOLUTION_SCALING):
     """ Simple resize function
     args:
         frame: image to be resized
@@ -30,6 +36,10 @@ def speedresize(frame, DISPLAY_RESOLUTION_SCALING):
         resized image
     """
     return cv.resize(frame, (int(frame.shape[1]*DISPLAY_RESOLUTION_SCALING), int(frame.shape[0]*DISPLAY_RESOLUTION_SCALING)))
+
+def hsvThreshold(img, minvalues, maxvalues):
+    hsvcolor = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+    return cv.inRange(hsvcolor, minvalues, maxvalues)
 
 
 def undistort(img, cMat, ncMat, dist, roi):
@@ -163,3 +173,55 @@ def houghlines(binary_image, draw_image, minimum_votes):
             cv.line(draw_image, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3,  cv.LINE_AA)
         return sum(angular_deviation)/len(angular_deviation), lowest_point
 
+def getLaneHead(frame, region, res):
+    width = frame.shape[1]
+    height = frame.shape[0]
+    clusters = []
+    gap = 0
+    for col in range(width):
+        column = frame[:,col][:height//region]
+        sumvalue = np.sum(column)
+        if(sumvalue == 0): # 
+            gap += 1
+        else:
+            if gap>res or len(clusters) == 0: # new cluster
+                clusters.append([])
+            clusters[-1].append(col)
+            gap = 0
+
+
+    return [sum(x)//len(x) for x in clusters]
+
+capture = cv.VideoCapture("test.mp4")
+
+while(True):
+    ret, frame = capture.read()
+    if not ret:
+        break
+    
+    pts = np.array(([575,564],[680,564],[744,620],[490,620])).astype("float32") # corners of square on surface
+    mask_corners = np.array([[570, 540], [680,540], [900, 681], [300, 683]]) # corners of mask
+    hsv_min = (0,0,142)
+    hsv_max = (180,255,255)
+
+
+    mask = drawMask(frame, mask_corners) # draw mask on original image
+    transformed = squarePerspectiveTransform(mask, pts) # perform square transform
+    binary_image = hsvThreshold(transformed, hsv_min, hsv_max) # hsv thresholding to get binary image
+ 
+    frame = cv.polylines(frame, [mask_corners.reshape((-1,1,2))], True, (0,255,0), 1)
+    
+
+    # resize and display
+    transformed = fastresize(transformed, 0.5)
+    binary_image = fastresize(binary_image, 0.5)
+    frame = fastresize(frame, 0.5)
+
+    #h = laneHistogram(binary_image, 2)
+
+    cv.imshow("original", frame)
+    cv.imshow("binary_image", binary_image)
+
+
+    if cv.waitKey(1) & 0xFF==ord('q'):
+        break
