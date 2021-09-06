@@ -191,3 +191,37 @@ def getLaneHead(frame, region, res):
 
 
     return [sum(x)//len(x) for x in clusters]
+
+def getBoundingbox(frame, bottomcenter, w, h, draw=False):
+    """ Returns average x position of pixels in bounding box
+
+    """
+    cols = range(bottomcenter[0]-w//2, bottomcenter[0]+w//2)
+    xpos = []
+    for col in cols:
+        column = frame[:,col][bottomcenter[1]-h:bottomcenter[1]]
+        sumvalue = np.sum(column)
+        for i in range(sumvalue):
+            xpos.append(col)
+    if len(xpos)==0: # if no new center is found, leave it as is
+        center = bottomcenter
+    else:
+        center =  sum(xpos)//len(xpos), bottomcenter[1]
+
+    return center
+
+def drawBoundingBox(frame, bottomcenter, w, h):
+    return cv.rectangle(frame, (bottomcenter[0]-w//2, bottomcenter[1]-h), (bottomcenter[0]+w//2, bottomcenter[1]), (0,255,0))
+
+
+
+
+
+
+
+
+
+
+
+
+
