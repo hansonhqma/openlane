@@ -179,7 +179,7 @@ def getLaneHead(frame, region, res):
     clusters = []
     gap = 0
     for col in range(width):
-        column = frame[:,col][:height//region]
+        column = frame[:,col][height-height//region:]
         sumvalue = np.sum(column)
         if(sumvalue == 0): # 
             gap += 1
@@ -191,37 +191,3 @@ def getLaneHead(frame, region, res):
 
 
     return [sum(x)//len(x) for x in clusters]
-
-capture = cv.VideoCapture("test.mp4")
-
-while(True):
-    ret, frame = capture.read()
-    if not ret:
-        break
-    
-    pts = np.array(([575,564],[680,564],[744,620],[490,620])).astype("float32") # corners of square on surface
-    mask_corners = np.array([[570, 540], [680,540], [900, 681], [300, 683]]) # corners of mask
-    hsv_min = (0,0,142)
-    hsv_max = (180,255,255)
-
-
-    mask = drawMask(frame, mask_corners) # draw mask on original image
-    transformed = squarePerspectiveTransform(mask, pts) # perform square transform
-    binary_image = hsvThreshold(transformed, hsv_min, hsv_max) # hsv thresholding to get binary image
- 
-    frame = cv.polylines(frame, [mask_corners.reshape((-1,1,2))], True, (0,255,0), 1)
-    
-
-    # resize and display
-    transformed = fastresize(transformed, 0.5)
-    binary_image = fastresize(binary_image, 0.5)
-    frame = fastresize(frame, 0.5)
-
-    #h = laneHistogram(binary_image, 2)
-
-    cv.imshow("original", frame)
-    cv.imshow("binary_image", binary_image)
-
-
-    if cv.waitKey(1) & 0xFF==ord('q'):
-        break
