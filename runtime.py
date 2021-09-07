@@ -1,17 +1,23 @@
 from pathlibcv import *
+from collections import deque
 import time
+
+framerate = deque(maxlen=50)
 
 box_count = 8
 box_width = 50
-frame_scale = 3
+frame_scale = 2
 
 capture = cv.VideoCapture("test.mp4")
 firstframe = True
 
-pts = np.array(([575,564],[680,564],[744,620],[490,620])).astype("float32") # corners of square on surface
-mask_corners = np.array([[570, 540], [680,540], [900, 681], [300, 683]]) # corners of mask
+pts = np.array(([575,564],[680,564],[744,620],[490,620])) # corners of square on surface
+mask_corners = np.array([[570, 540], [680,540], [900, 683], [300, 683]]) # corners of mask
 pts, mask_corners = pts//frame_scale, mask_corners//frame_scale # resize corners for resized frame
+pts, mask_corners = pts.astype('int64'), mask_corners.astype('int64')
 
+marker_color = (0,0,255)
+marker_size = 5
 boxes = []
 
 while(True):
@@ -32,40 +38,38 @@ while(True):
     transformed = squarePerspectiveTransform(mask, pts) # perform square transform
     binary_image = hsvThreshold(transformed, hsv_min, hsv_max) # hsv thresholding to get binary image
  
-    frame = cv.polylines(frame, [mask_corners.reshape((-1,1,2))], True, (0,255,0), 1) # mark mask on original image
+    lane_markers = cv.cvtColor(np.zeros((FRAME_HEIGHT, FRAME_WIDTH)).astype("uint8"), cv.COLOR_GRAY2BGR)
 
     if firstframe: # first pass, get lane starts, then build the box positions
         firstframe = False
 
-        lane_start_positions = getLaneHead(binary_image, box_count, 5)
-        for lane_pos in lane_start_positions:
-            # get first box
-            lane_boxes = [[lane_pos, FRAME_HEIGHT]]
-            
-            for box_no in range(1,box_count):
-                box_pos_x = lane_boxes[-1][0]
-                box_pos_y = lane_boxes[-1][1]-box_height
-                update = getBoundingbox(binary_image, (box_pos_x, box_pos_y), box_width, box_height)
-                lane_boxes.append([update[0], update[1]]) # add box pos
-            boxes.append(lane_boxes)
-    else: # update boxes
-        for lane in boxes:
-            for i in range(len(lane)):
-                update = getBoundingbox(binary_image, lane[i], box_width, box_height)
-                lane[i][0] = update[0]
-                lane[i][1] = update[1]
-                transformed = drawBoundingBox(transformed, lane[i], box_width, box_height)
-
-    TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
-    print("FPS: {:.2f}".format(1/TIME_DELTA))
+        lane_start_positions = getLaneHead(binary_image, box_count, 5) # get coordinates of lane starts
+        for lane in lane_start_positions:
+            boxes.append([lane for x in range(box_count)]) # fill with start position
     
-        
+    for lane in boxes:
+        lane[0] = getBoundingBox(binary_image, lane[0], box_width, box_height) # update bottom first
+        lane_markers = cv.circle(lane_markers, lane[0], marker_size, marker_color, -1)
+        transformed = cv.circle(transformed, lane[0], marker_size, marker_color, -1)
+        for i in range(1,len(lane)):
+            bottom_center = [lane[i-1][0], lane[i-1][1]-box_height] # calculate next box pos based on previous box
+            lane[i] = getBoundingBox(binary_image, bottom_center, box_width, box_height)
+            lane_markers = cv.circle(lane_markers, lane[i], marker_size, marker_color, -1)
+            transformed = cv.circle(transformed, lane[i], marker_size, marker_color, -1)
 
-    # display
+    lane_markers = squarePerspectiveTransform(lane_markers, pts, reverse=True)
+    frame = cv.addWeighted(frame, 1, lane_markers, 1, 0)
+        
+    
+    # upscale and display
     cv.imshow("original", frame)
     cv.imshow("transformed", transformed)
-    cv.imshow("binary_image", binary_image)
+
+    TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
+    framerate.append(1/TIME_DELTA)
 
 
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
+
+print("Average fps: {:.2f}".format(sum(framerate)/len(framerate)))

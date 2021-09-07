@@ -8,9 +8,9 @@ def show(img, caption="frame"):
     cv.destroyAllWindows()
 
 def drawMask(image, pts, outline_source = False):
-    mask = cv.fillPoly(np.zeros(image.shape), pts=[pts], color=(255,255,255)).astype(np.uint8)
+    mask = cv.fillPoly(np.zeros(image.shape).astype(np.uint8), pts=[pts], color=(255,255,255)).astype(np.uint8)
     if outline_source:
-        image = cv.polylines(image, [pts.reshape((-1,1,2))], True, (0,255,0), 2)
+        image = cv.polylines(image, [pts.reshape((-1,1,2))], True, (255,255,0), 2)
     return cv.bitwise_and(image, mask)
 
 def quickMask(imgshape):
@@ -43,7 +43,7 @@ def hsvThreshold(img, minvalues, maxvalues):
 
 
 def undistort(img, cMat, ncMat, dist, roi):
-    """ Camera undistortion function that appplies an undistortion matrix
+    """ Camera undistortion function that applies an undistortion matrix
     args:
         img: image to be undistorted
 
@@ -119,7 +119,7 @@ def squarePerspectiveTransform(image, pts, reverse=False):
 
     # calculate square bounding box
 
-    SCALING_FACTOR = 0.5
+    SCALING_FACTOR = 0.75
 
     square_edge_distance = (x_max-x_min)*SCALING_FACTOR
 
@@ -190,38 +190,26 @@ def getLaneHead(frame, region, res):
             gap = 0
 
 
-    return [sum(x)//len(x) for x in clusters]
+    return [[sum(x)//len(x), height] for x in clusters]
 
-def getBoundingbox(frame, bottomcenter, w, h, draw=False):
+def getBoundingBox(frame, bottomcenter, w, h, draw=False):
     """ Returns average x position of pixels in bounding box
 
     """
     cols = range(bottomcenter[0]-w//2, bottomcenter[0]+w//2)
-    xpos = []
+    length = 0
+    xpos = 0
     for col in cols:
         column = frame[:,col][bottomcenter[1]-h:bottomcenter[1]]
         sumvalue = np.sum(column)
-        for i in range(sumvalue):
-            xpos.append(col)
-    if len(xpos)==0: # if no new center is found, leave it as is
+        length += sumvalue
+        xpos += sumvalue*col
+    if xpos==0: # if no new center is found, leave it as is
         center = bottomcenter
     else:
-        center =  sum(xpos)//len(xpos), bottomcenter[1]
+        center =  int(xpos//length), bottomcenter[1]
 
     return center
 
 def drawBoundingBox(frame, bottomcenter, w, h):
     return cv.rectangle(frame, (bottomcenter[0]-w//2, bottomcenter[1]-h), (bottomcenter[0]+w//2, bottomcenter[1]), (0,255,0))
-
-
-
-
-
-
-
-
-
-
-
-
-
