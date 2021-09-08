@@ -119,7 +119,7 @@ def squarePerspectiveTransform(image, pts, reverse=False):
 
     # calculate square bounding box
 
-    SCALING_FACTOR = 0.75
+    SCALING_FACTOR = 1.2
 
     square_edge_distance = (x_max-x_min)*SCALING_FACTOR
 
