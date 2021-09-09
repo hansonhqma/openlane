@@ -6,14 +6,13 @@ import time
 
 framerate = deque(maxlen=50)
 
-box_count = 6
+box_count = 5
 box_width = 50
 frame_scale = 2
 
 capture = cv.VideoCapture("driving.mp4")
 firstframe = True
 
-<<<<<<< HEAD
 hsv_min = (0,0,161)
 hsv_max = (180,255,255)
 
@@ -21,10 +20,6 @@ mask_corners = np.array(([563,510],[700,510],
     [1280,720],[0,720])) # corners of square on surface
 pts = np.array([[585, 527], [695,527],
     [730, 554], [540, 554]]) # corners of mask
-=======
-pts = np.array(([575,564],[680,564],[744,620],[490,620])) # corners of square on surface
-mask_corners = np.array([[530, 540], [710,540], [930, 683], [270, 683]]) # corners of mask
->>>>>>> 0e81e65ef1140c0999fba45f5ca0e65d49f56505
 pts, mask_corners = pts//frame_scale, mask_corners//frame_scale # resize corners for resized frame
 pts, mask_corners = pts.astype('int64'), mask_corners.astype('int64')
 
@@ -32,14 +27,11 @@ marker_color = (0,0,255)
 marker_size = 5
 boxes = []
 
-<<<<<<< HEAD
 showmask = 'showmask' in sys.argv
-=======
 
 showmask = False
 if 'showmask' in sys.argv:
     showmask = True
->>>>>>> 0e81e65ef1140c0999fba45f5ca0e65d49f56505
 
 while(True):
     NS_TIME = time.clock_gettime_ns(time.CLOCK_REALTIME)
@@ -56,7 +48,7 @@ while(True):
     mask = drawMask(frame, mask_corners) # draw mask on original image
     if showmask:
         frame = cv.polylines(frame, [mask_corners], True, (0,255,0))
-    transformed = squarePerspectiveTransform(mask, pts) # perform square transform
+    transformed = squarePerspectiveTransform(mask, pts, SCALING_FACTOR=1) # perform square transform
     binary_image = hsvThreshold(transformed, hsv_min, hsv_max) # hsv thresholding to get binary image
  
     lane_markers = cv.cvtColor(np.zeros((FRAME_HEIGHT, FRAME_WIDTH)).astype("uint8"), cv.COLOR_GRAY2BGR)
@@ -87,11 +79,7 @@ while(True):
     
     # upscale and display
     cv.imshow("original", frame)
-    cv.imshow("binary_image", binary_image)
-<<<<<<< HEAD
     cv.imshow("transformed", transformed)
-=======
->>>>>>> 0e81e65ef1140c0999fba45f5ca0e65d49f56505
 
     TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
     framerate.append(1/TIME_DELTA)
