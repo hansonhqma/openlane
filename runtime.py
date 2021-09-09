@@ -48,7 +48,7 @@ while(True):
     mask = drawMask(frame, mask_corners) # draw mask on original image
     if showmask:
         frame = cv.polylines(frame, [mask_corners], True, (0,255,0))
-    transformed = squarePerspectiveTransform(mask, pts, SCALING_FACTOR=1) # perform square transform
+    transformed = squarePerspectiveTransform(mask, pts, SCALING_FACTOR=1.2) # perform square transform
     binary_image = hsvThreshold(transformed, hsv_min, hsv_max) # hsv thresholding to get binary image
  
     lane_markers = cv.cvtColor(np.zeros((FRAME_HEIGHT, FRAME_WIDTH)).astype("uint8"), cv.COLOR_GRAY2BGR)
