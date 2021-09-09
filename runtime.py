@@ -63,7 +63,7 @@ while(True):
             bottom_center = [lane[i-1][0], lane[i-1][1]-box_height] # calculate next box pos based on previous box
             lane[i] = getBoundingBox(binary_image, bottom_center, box_width, box_height)
             lane_markers = cv.circle(lane_markers, lane[i], marker_size, marker_color, -1)
-            transformed = cv.circle(transformed, lane[i], marker_size, marker_color, -1)
+            transformed = drawBoundingBox(transformed, lane[i], box_width, box_height)
 
     lane_markers = squarePerspectiveTransform(lane_markers, pts, reverse=True)
     frame = cv.addWeighted(frame, 1, lane_markers, 1, 0)
@@ -71,7 +71,7 @@ while(True):
     
     # upscale and display
     cv.imshow("original", frame)
-    cv.imshow("binary_image", binary_image)
+    cv.imshow("transformed", transformed)
 
     TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
     framerate.append(1/TIME_DELTA)
