@@ -96,7 +96,7 @@ def getCameraMatrices(folderpath, chessboardSize):
     return cameraMatrix, newCameraMatrix, dist, roi
 
 
-def squarePerspectiveTransform(image, pts, reverse=False):
+def squarePerspectiveTransform(image, pts, SCALING=1, reverse=False):
     """ Performs a 4 point perspective warp on an image, assuming pts marks out the corners of a flat square
     args:
         image: source image
@@ -119,11 +119,9 @@ def squarePerspectiveTransform(image, pts, reverse=False):
 
     # calculate square bounding box
 
-    SCALING_FACTOR = 0.75
+    square_edge_distance = (x_max-x_min)*SCALING
 
-    square_edge_distance = (x_max-x_min)*SCALING_FACTOR
-
-    bounding_box_center = ((x_max+x_min)//2, (y_max+y_min)//2)
+    bounding_box_center = ((x_max+x_min)//2, (y_max+y_min)//2+60)
 
     dst = np.array([[bounding_box_center[0]-square_edge_distance//2, bounding_box_center[1]-square_edge_distance//2],
         [bounding_box_center[0]+square_edge_distance//2, bounding_box_center[1]-square_edge_distance//2],

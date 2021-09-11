@@ -1,4 +1,5 @@
 import cv2 as cv
+import pathlibcv as lib
 import os
 import numpy as np
 
@@ -8,7 +9,7 @@ def undistort(img, cMat, ncMat, dist, roi):
     dst = dst[y:y+h,x:x+w]
     return dst
 
-capture = cv.VideoCapture(0)
+capture = cv.VideoCapture(1)
 
 ## Camera calibration process
 
@@ -52,6 +53,10 @@ while True:
 
     frame = undistort(frame, cameraMatrix, newCameraMatrix, dist, roi)
 
+    binary_image = lib.hsvThreshold(frame, (0,0,0), (180,255,150))
+
     cv.imshow('frame', frame)
+    cv.imshow('binary_image', binary_image)
+
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
