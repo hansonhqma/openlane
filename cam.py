@@ -2,61 +2,36 @@ import cv2 as cv
 import pathlibcv as lib
 import os
 import numpy as np
+import time
+from collections import deque
 
-def undistort(img, cMat, ncMat, dist, roi):
-    dst = cv.undistort(img, cMat, dist, None, ncMat)
-    x,y,w,h = roi
-    dst = dst[y:y+h,x:x+w]
-    return dst
+framerate = deque(maxlen=100)
 
-capture = cv.VideoCapture(1)
+cmat, ncmat, dist, roi = lib.getCameraMatrices('calibration images', (4,7))
 
-## Camera calibration process
+capture = cv.VideoCapture(0)
 
-chessboardSize = (4,7)
-calibrationImageSize=()
-
-# get all calibration images
-
-images = []
-for path in os.listdir('calibration images'):
-    if path.split('.')[1]=='jpg':
-        img = cv.cvtColor(cv.imread('calibration images/'+path), cv.COLOR_BGR2GRAY)
-        calibrationImageSize = img.shape
-        images.append(img)
-
-# find corners
-
-objp = np.zeros((chessboardSize[0] * chessboardSize[1], 3), np.float32)
-objp[:,:2] = np.mgrid[0:chessboardSize[0],0:chessboardSize[1]].T.reshape(-1,2)
-
-objpoints = []
-imgpoints = []
-for image in images:
-    ret, corners = cv.findChessboardCorners(image, chessboardSize, None)
-    if ret:
-        objpoints.append(objp)
-        imgpoints.append(corners)
-
-# calibration
-
-ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, calibrationImageSize, None, None)
-
-img = cv.imread('calibration images/calib1.jpg')
-h,w = img.shape[:2]
-newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+frame, uframe = 0,0
 
 while True:
+    NS_TIME = time.clock_gettime_ns(time.CLOCK_REALTIME)
     ret, frame = capture.read()
     if not ret:
         break
 
-    frame = undistort(frame, cameraMatrix, newCameraMatrix, dist, roi)
+    uframe = lib.undistort(frame, cmat, ncmat, dist, roi)
 
-    binary_image = lib.hsvThreshold(frame, (0,0,0), (180,255,150))
+    #binary_image = lib.hsvThreshold(frame, (0,0,0), (180,255,150))
 
     cv.imshow('frame', frame)
-    cv.imshow('binary_image', binary_image)
+    cv.imshow('uframe', uframe)
+
+    TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
+    framerate.append(1/TIME_DELTA)
 
     if cv.waitKey(1) & 0xFF==ord('q'):
         break
+
+print("Average fps: {:.2f}".format(sum(framerate)/len(framerate)))
+print(frame.shape)
+print(uframe.shape)

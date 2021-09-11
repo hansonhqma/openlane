@@ -7,9 +7,9 @@ framerate = deque(maxlen=50)
 
 box_count = 6
 box_width = 100
-frame_scale = 1
+frame_scale = 2
 
-capture = cv.VideoCapture(1)
+capture = cv.VideoCapture('path.mov')
 firstframe = True
 
 pts = np.array(([267,139],[381,139],
