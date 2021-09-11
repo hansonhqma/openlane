@@ -21,10 +21,10 @@ while True:
 
     uframe = lib.undistort(frame, cmat, ncmat, dist, roi)
 
-    #binary_image = lib.hsvThreshold(frame, (0,0,0), (180,255,150))
+    binary_image = lib.hsvThreshold(uframe, (0,0,0), (180,255,150))
 
-    cv.imshow('frame', frame)
     cv.imshow('uframe', uframe)
+    cv.imshow('binary', binary_image)
 
     TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
     framerate.append(1/TIME_DELTA)
@@ -33,5 +33,4 @@ while True:
         break
 
 print("Average fps: {:.2f}".format(sum(framerate)/len(framerate)))
-print(frame.shape)
 print(uframe.shape)
