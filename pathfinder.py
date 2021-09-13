@@ -56,9 +56,9 @@ frame = lib.fastresize(frame, 1/FRAME_SCALE)
 
 frame = lib.undistort(frame, *CALIBRATION_DATA)
 
-binary_frame = lib.hsvThreshold(frame, HSV_MIN, HSV_MAX)
+binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
 
-binary_frame = lib.drawMask(binary_frame, MASK_PTS)
+binary_frame = lib.fovmask(binary_frame, MASK_PTS)
 
 transform = lib.squarePerspectiveTransform(binary_frame, TRANSFORM_PTS, SCALING=TRANSFORM_SCALING)
 
@@ -93,9 +93,9 @@ while(True):
     if SHOWMASK:
         frame = cv.polylines(frame, [MASK_PTS], True, (0,255,0))
 
-    binary_frame = lib.hsvThreshold(frame, HSV_MIN, HSV_MAX)
+    binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
 
-    binary_frame = lib.drawMask(binary_frame, MASK_PTS)
+    binary_frame = lib.fovmask(binary_frame, MASK_PTS)
 
     transform = lib.squarePerspectiveTransform(binary_frame, TRANSFORM_PTS, SCALING=TRANSFORM_SCALING)
 
