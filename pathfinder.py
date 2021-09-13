@@ -1,4 +1,4 @@
-import pathlibcv as lib
+import openlane as lib
 import numpy as np
 import cv2 as cv
 import sys
@@ -11,7 +11,7 @@ FRAMERATELOG = deque(maxlen=100)
 
 # CV Hyperparameters
 
-SOURCE = 0
+SOURCE = "testfootage.mov"
 CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
 INITIAL_FRAME = True
@@ -79,7 +79,6 @@ for lane in LANE_BOXES:
         bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
         lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
 
-print(LANE_BOXES)
 while(True):
     loop_start_time = time.clock_gettime_ns(time.CLOCK_REALTIME)
 
