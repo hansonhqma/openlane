@@ -23,13 +23,14 @@ LANE_RESOLUTION = 5
 
 FRAME_SCALE = 2
 TRANSFORM_SCALING = 0.5
+TRASNFORM_VSHIFT = 30
 
 # These two arrays are points on camera calibrated image!
 TRANSFORM_PTS = np.array(([265,150],[390,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
 MASK_PTS = np.array([[210, 90],[409,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
 
-MARKER_COLOR = (0,0,255)
-MARKER_SIZE = 5
+MARKER_COLOR = (255,255,0)
+MARKER_SIZE = 2
 
 HSV_MIN = (0,0,0)
 HSV_MAX = (180,255,150)
@@ -54,13 +55,13 @@ frame = lib.fastresize(frame, 1/FRAME_SCALE)
 
 # lens undistortion -> hsv threshold -> mask -> transform
 
-frame = lib.undistort(frame, *CALIBRATION_DATA)
+frame = lib.undistortFrame(frame, *CALIBRATION_DATA)
 
 binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
 
 binary_frame = lib.fovmask(binary_frame, MASK_PTS)
 
-transform = lib.squarePerspectiveTransform(binary_frame, TRANSFORM_PTS, SCALING=TRANSFORM_SCALING)
+transform = lib.squarePerspectiveTransform(binary_frame, TRANSFORM_PTS, TRASNFORM_VSHIFT, SCALING=TRANSFORM_SCALING)
 
 FRAME_HEIGHT = frame.shape[0]
 FRAME_WIDTH = frame.shape[1]
@@ -68,7 +69,7 @@ BOX_HEIGHT = FRAME_HEIGHT//BOX_COUNT
 
 # lane head search
 
-lane_start_positions = lib.getLaneHead(transform, BOX_COUNT, LANE_RESOLUTION)
+lane_start_positions = lib.binaryImageHistogram(transform, BOX_COUNT, LANE_RESOLUTION)
 for lane in lane_start_positions:
     LANE_BOXES.append([lane for x in range(BOX_COUNT)])
 
@@ -79,45 +80,44 @@ for lane in LANE_BOXES:
         bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
         lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
 
-while(True):
+while True:
     loop_start_time = time.clock_gettime_ns(time.CLOCK_REALTIME)
-
 
     ret, frame = capture.read()
     if not ret: break
 
     # image processing stack
     frame = lib.fastresize(frame, 1/FRAME_SCALE)
-    frame = lib.undistort(frame, *CALIBRATION_DATA)
+    frame = lib.undistortFrame(frame, *CALIBRATION_DATA)
+
+    binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
 
     if SHOWMASK:
         frame = cv.polylines(frame, [MASK_PTS], True, (0,255,0))
 
-    binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
-
     binary_frame = lib.fovmask(binary_frame, MASK_PTS)
 
-    transform = lib.squarePerspectiveTransform(binary_frame, TRANSFORM_PTS, SCALING=TRANSFORM_SCALING)
+    transform = lib.squarePerspectiveTransform(binary_frame, TRANSFORM_PTS, TRASNFORM_VSHIFT, SCALING=TRANSFORM_SCALING)
 
     if DRAWMARKERS:
         drawn_lane_markers = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3)).astype(np.uint8)
-        raw_transform = lib.squarePerspectiveTransform(frame, TRANSFORM_PTS, SCALING=TRANSFORM_SCALING)
+        raw_transform = lib.squarePerspectiveTransform(frame, TRANSFORM_PTS, TRASNFORM_VSHIFT, SCALING=TRANSFORM_SCALING)
 
     # lane finding stack
     for lane in LANE_BOXES:
         lane[0] = lib.getBoundingBox(transform, lane[0], BOX_WIDTH, BOX_HEIGHT) # update bottom
         if DRAWMARKERS:
             drawn_lane_markers = cv.circle(drawn_lane_markers, lane[0], MARKER_SIZE, MARKER_COLOR, -1)
-            raw_transform = lib.drawBoundingBox(raw_transform, lane[0], BOX_WIDTH, BOX_HEIGHT)
+            raw_transform = cv.rectangle(raw_transform, (lane[0][0]-BOX_WIDTH//2, lane[0][1]-BOX_HEIGHT), (lane[0][0]+BOX_WIDTH//2, lane[0][1]), (0,255,0))
         for i in range(1, len(lane)):
             bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
             lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
             if DRAWMARKERS:
                 drawn_lane_markers = cv.circle(drawn_lane_markers, lane[i], MARKER_SIZE, MARKER_COLOR, -1)
-                raw_transform = lib.drawBoundingBox(raw_transform, lane[i], BOX_WIDTH, BOX_HEIGHT)
+                raw_transform = cv.rectangle(raw_transform, (lane[i][0]-BOX_WIDTH//2, lane[i][1]-BOX_HEIGHT), (lane[i][0]+BOX_WIDTH//2, lane[i][1]), (0,255,0))
 
     if DRAWMARKERS:
-        drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, SCALING=TRANSFORM_SCALING, reverse=True)
+        drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRASNFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
         frame = cv.addWeighted(frame, 1, drawn_lane_markers, 1, 0)
 
     cv.imshow("Undistorted raw feed", frame)

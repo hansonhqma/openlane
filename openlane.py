@@ -11,8 +11,8 @@ def fovmask(img, pts):
     Returns:
         numpy.ndarrray: masked image
     """
-    mask = cv.fillPoly(np.zeros(image.shape).astype(np.uint8), pts=[pts], color=(255,255,255)).astype(np.uint8)
-    return cv.bitwise_and(image, mask)
+    mask = cv.fillPoly(np.zeros(img.shape).astype(np.uint8), pts=[pts], color=(255,255,255)).astype(np.uint8)
+    return cv.bitwise_and(img, mask)
 
 def fastresize(img, scaling):
     """ Simple resize function
@@ -90,11 +90,12 @@ def getCameraMatrices(folderpath, chessboardSize):
     return cameraMatrix, newCameraMatrix, dist, roi
 
 
-def squarePerspectiveTransform(img, pts, SCALING=1, reverse=False):
+def squarePerspectiveTransform(img, pts, vshift, SCALING=1, reverse=False):
     """ Performs a 4 point perspective warp on an image
     Args:
         img(numpy.ndarray): source image
         pts(numpy.ndarray): 4-point polygon marking out a square on target surface
+        vshift(int): number of pixels to vertically shift the transform
         reverse(boolean): applies the inverse transform if True
     
     Returns:
@@ -116,7 +117,7 @@ def squarePerspectiveTransform(img, pts, SCALING=1, reverse=False):
 
     square_edge_distance = (x_max-x_min)*SCALING
 
-    bounding_box_center = ((x_max+x_min)//2, (y_max+y_min)//2+60)
+    bounding_box_center = ((x_max+x_min)//2, (y_max+y_min)//2+vshift)
 
     dst = np.array([[bounding_box_center[0]-square_edge_distance//2, bounding_box_center[1]-square_edge_distance//2],
         [bounding_box_center[0]+square_edge_distance//2, bounding_box_center[1]-square_edge_distance//2],
@@ -168,13 +169,22 @@ def houghlines(binary_image, minimum_votes):
             cv.line(draw_image, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3,  cv.LINE_AA)
         return sum(angular_deviation)/len(angular_deviation), lowest_point, ret
 
-def getLaneHead(frame, region, res):
-    width = frame.shape[1]
-    height = frame.shape[0]
+def binaryImageHistogram(img, region, res):
+    """ Takes the histogram of the lower 1/nth region of the image, and extracts clusters by separation distance
+    Args:
+        img(numpy.ndarray): binary image input
+        region(int): n in bottom 1/nth region of the image to be parsed
+        res(int): maximum separation between non-zero columns for them to be declared in the same cluster
+    Returns:
+       list: image coordinates describing estimated start position of each lane 
+    """
+
+    width = img.shape[1]
+    height = img.shape[0]
     clusters = []
     gap = 0
     for col in range(width):
-        column = frame[:,col][height-height//region:]
+        column = img[:,col][height-height//region:]
         sumvalue = np.sum(column)
         if(sumvalue == 0): # 
             gap += 1
@@ -187,15 +197,20 @@ def getLaneHead(frame, region, res):
 
     return [[sum(x)//len(x), height] for x in clusters]
 
-def getBoundingBox(frame, bottomcenter, w, h, draw=False):
+def getBoundingBox(img, bottomcenter, w, h):
     """ Returns average x position of pixels in bounding box
+    Args:
+        img(numpy.ndarray): binary image input
+        bottomcenter(tuple): bottom center coordinate of bounding box
+        w(int): bounding box pixel width
+        h(int): bounding box pixel height
 
     """
     cols = range(bottomcenter[0]-w//2, bottomcenter[0]+w//2)
     length = 0
     xpos = 0
     for col in cols:
-        column = frame[:,col][bottomcenter[1]-h:bottomcenter[1]]
+        column = img[:,col][bottomcenter[1]-h:bottomcenter[1]]
         sumvalue = np.sum(column)
         length += sumvalue
         xpos += sumvalue*col
@@ -205,6 +220,3 @@ def getBoundingBox(frame, bottomcenter, w, h, draw=False):
         center =  int(xpos//length), bottomcenter[1]
 
     return center
-
-def drawBoundingBox(frame, bottomcenter, w, h):
-    return cv.rectangle(frame, (bottomcenter[0]-w//2, bottomcenter[1]-h), (bottomcenter[0]+w//2, bottomcenter[1]), (0,255,0))
