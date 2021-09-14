@@ -16,18 +16,22 @@ CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
 INITIAL_FRAME = True
 
-BOX_COUNT = 6
-BOX_WIDTH = 50
-LANE_BOXES = []
-LANE_RESOLUTION = 5
-
-FRAME_SCALE = 2
+FRAME_SCALE = 1.5
 TRANSFORM_SCALING = 0.5
 TRASNFORM_VSHIFT = 30
 
+BOX_COUNT = 4
+BOX_WIDTH = 70
+BOX_MAX = 2
+LANE_BOXES = []
+LANE_RESOLUTION = 5
+
 # These two arrays are points on camera calibrated image!
-TRANSFORM_PTS = np.array(([265,150],[390,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
+TRANSFORM_PTS = np.array(([260,150],[395,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
 MASK_PTS = np.array([[210, 90],[409,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
+TRANSFORM_PTS = TRANSFORM_PTS.astype(np.int64)
+MASK_PTS = MASK_PTS.astype(np.int64)
+
 
 MARKER_COLOR = (255,255,0)
 MARKER_SIZE = 2
@@ -51,11 +55,11 @@ capture = cv.VideoCapture(SOURCE)
 ret, frame = capture.read()
 if not ret: exit()
 
-frame = lib.fastresize(frame, 1/FRAME_SCALE)
-
-# lens undistortion -> hsv threshold -> mask -> transform
+# lens undistortion -> preprocessing resize -> hsv threshold -> mask -> transform
 
 frame = lib.undistortFrame(frame, *CALIBRATION_DATA)
+
+frame = lib.fastresize(frame, 1/FRAME_SCALE)
 
 binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
 
@@ -77,6 +81,8 @@ for lane in lane_start_positions:
 for lane in LANE_BOXES:
     lane[0] = lib.getBoundingBox(transform, lane[0], BOX_WIDTH, BOX_HEIGHT) # update bottom
     for i in range(1, len(lane)):
+        if BOX_MAX!=-1 and i >= BOX_MAX:
+            break
         bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
         lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
 
@@ -87,8 +93,8 @@ while True:
     if not ret: break
 
     # image processing stack
-    frame = lib.fastresize(frame, 1/FRAME_SCALE)
     frame = lib.undistortFrame(frame, *CALIBRATION_DATA)
+    frame = lib.fastresize(frame, 1/FRAME_SCALE)
 
     binary_frame = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), HSV_MIN, HSV_MAX)
 
@@ -110,6 +116,8 @@ while True:
             drawn_lane_markers = cv.circle(drawn_lane_markers, lane[0], MARKER_SIZE, MARKER_COLOR, -1)
             raw_transform = cv.rectangle(raw_transform, (lane[0][0]-BOX_WIDTH//2, lane[0][1]-BOX_HEIGHT), (lane[0][0]+BOX_WIDTH//2, lane[0][1]), (0,255,0))
         for i in range(1, len(lane)):
+            if BOX_MAX!=-1 and i >= BOX_MAX:
+                break
             bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
             lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
             if DRAWMARKERS:
@@ -133,25 +141,6 @@ while True:
         break
 
 print("Average fps: {:.2f}".format(sum(FRAMERATELOG)/len(FRAMERATELOG)))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
