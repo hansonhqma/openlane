@@ -77,15 +77,6 @@ for lane in lane_start_positions:
 
 lane = LANE_BOXES[0] # temporary solution
 
-
-# lane finding stack
-lane[0] = lib.getBoundingBox(transform, lane[0], BOX_WIDTH, BOX_HEIGHT) # update bottom
-for i in range(1, len(lane)):
-    if BOX_MAX!=-1 and i >= BOX_MAX:
-        break
-    bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
-    lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
-
 while True:
     loop_start_time = time.clock_gettime_ns(time.CLOCK_REALTIME)
 
