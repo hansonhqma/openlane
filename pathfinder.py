@@ -16,7 +16,7 @@ CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
 INITIAL_FRAME = True
 
-FRAME_SCALE = 2
+FRAME_SCALE = 1
 TRANSFORM_SCALING = 0.5
 TRANSFORM_VSHIFT = 30
 
@@ -113,6 +113,15 @@ while True:
         if DRAWMARKERS:
             drawn_lane_markers = cv.circle(drawn_lane_markers, lane[i], MARKER_SIZE, MARKER_COLOR, -1)
             raw_transform = cv.rectangle(raw_transform, (lane[i][0]-BOX_WIDTH//2, lane[i][1]-BOX_HEIGHT), (lane[i][0]+BOX_WIDTH//2, lane[i][1]), (0,255,0))
+
+    vectorp1 = lane[0]
+    vectorp2 = lane[BOX_MAX-1]
+    if vectorp2[0]-vectorp1[0]==0:
+        angular_trajectory = 0
+    else:
+        angular_trajectory = np.arctan((vectorp2[0]-vectorp1[0])/(vectorp2[1]-vectorp1[1]))
+
+    lateral_trajectory = vectorp1[0]/FRAME_WIDTH
 
     if DRAWMARKERS:
         drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRANSFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
