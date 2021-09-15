@@ -43,6 +43,7 @@ class controller:
             print("CONTROLLER COEFSS:\nANGULAR:", self.angle_coeff,"\nLATERAL:", self.lateral_coeff)
             print("Angular error:", angular_error, "\nLateral error:", lateral_error)
             print("Angular gain:", angular_gain, "\nLateral gain:", lateral_gain)
+            print("Total gain:", total_gain)
         
         return total_gain
 

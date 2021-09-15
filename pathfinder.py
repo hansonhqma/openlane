@@ -12,7 +12,7 @@ FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((1,0,1), (1,0,1), 0.4, 0.6)
+pid = controller((50,0,1), (50,0,1), 0.2, 0.8)
 
 # CV Hyperparameters
 
@@ -121,14 +121,15 @@ while True:
 
     vectorp1 = lane[0]
     vectorp2 = lane[BOX_MAX-1]
+    arrow = cv.arrowedLine(np.zeros(frame.shape), vectorp1, vectorp2, (0,255,0), thickness=2)
     if vectorp2[0]-vectorp1[0]==0:
         angular_trajectory = 0
     else:
         angular_trajectory = np.arctan((vectorp2[0]-vectorp1[0])/(vectorp2[1]-vectorp1[1]))
 
-    lateral_trajectory = vectorp1[0]/FRAME_WIDTH - 0.5
+    lateral_trajectory = 0.5 - vectorp1[0]/FRAME_WIDTH
 
-    print("Total gain:", pid.gain(angular_trajectory, lateral_trajectory, verbose=True))
+    pid.gain(angular_trajectory, lateral_trajectory, verbose=True)
 
     if DRAWMARKERS:
         drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRANSFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
@@ -142,6 +143,7 @@ while True:
         cv.imshow("Raw transformed feed", raw_transform)
 
     cv.imshow("Binary transform", transform)
+    cv.imshow("trajectory", arrow)
 
     time_delta = (time.clock_gettime_ns(time.CLOCK_REALTIME)-loop_start_time)/1000000000
     FRAMERATELOG.append(1/time_delta)
