@@ -195,7 +195,7 @@ def binaryImageHistogram(img, region, res):
             gap = 0
 
 
-    return [[sum(x)//len(x), height] for x in clusters]
+    return [(sum(x)//len(x), height) for x in clusters]
 
 def getBoundingBox(img, bottomcenter, w, h):
     """ Returns average x position of pixels in bounding box

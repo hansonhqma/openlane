@@ -22,7 +22,7 @@ TRASNFORM_VSHIFT = 30
 
 BOX_COUNT = 4
 BOX_WIDTH = 70
-BOX_MAX = 2
+BOX_MAX = 3
 LANE_BOXES = []
 LANE_RESOLUTION = 5
 
@@ -87,6 +87,7 @@ for lane in LANE_BOXES:
         lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
 
 while True:
+    print(LANE_BOXES)
     loop_start_time = time.clock_gettime_ns(time.CLOCK_REALTIME)
 
     ret, frame = capture.read()
