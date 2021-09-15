@@ -1,4 +1,5 @@
 import openlane as lib
+from controller import controller
 import numpy as np
 import cv2 as cv
 import sys
@@ -9,6 +10,10 @@ import time
 
 FRAMERATELOG = deque(maxlen=100)
 
+# Controller
+
+pid = controller((1,0,1), (1,0,1), 0.4, 0.6)
+
 # CV Hyperparameters
 
 SOURCE = "testfootage.mov"
@@ -16,7 +21,7 @@ CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
 INITIAL_FRAME = True
 
-FRAME_SCALE = 1
+FRAME_SCALE = 1.5
 TRANSFORM_SCALING = 0.5
 TRANSFORM_VSHIFT = 30
 
@@ -121,7 +126,9 @@ while True:
     else:
         angular_trajectory = np.arctan((vectorp2[0]-vectorp1[0])/(vectorp2[1]-vectorp1[1]))
 
-    lateral_trajectory = vectorp1[0]/FRAME_WIDTH
+    lateral_trajectory = vectorp1[0]/FRAME_WIDTH - 0.5
+
+    print("Total gain:", pid.gain(angular_trajectory, lateral_trajectory, verbose=True))
 
     if DRAWMARKERS:
         drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRANSFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
