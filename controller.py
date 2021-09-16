@@ -1,7 +1,7 @@
 from collections import deque
 
 class controller:
-    base_voltage = 6
+    base_dutycycle = 50
     
     angle_coeff = ()
     lateral_coeff = ()
@@ -47,4 +47,11 @@ class controller:
         
         return total_gain
 
+    def motorOutput(self, gainvalue):
+        if gainvalue < 0: # increase left motor voltage
+            return self.base_dutycycle - gainvalue, self.base_dutycycle
+        elif gainvalue > 0: #increase right motor voltage
+            return self.base_dutycycle, self.base_dutycycle + gainvalue
+        else:
+            return self.base_dutycycle, self.base_dutycycle
     

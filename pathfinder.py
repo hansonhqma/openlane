@@ -12,7 +12,7 @@ FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((50,0,1), (50,0,1), 0.2, 0.8)
+pid = controller((250,100,50), (250,100,50), 0.2, 0.8)
 
 # CV Hyperparameters
 
@@ -129,7 +129,8 @@ while True:
 
     lateral_trajectory = 0.5 - vectorp1[0]/FRAME_WIDTH
 
-    pid.gain(angular_trajectory, lateral_trajectory, verbose=True)
+    gain = pid.gain(angular_trajectory, lateral_trajectory, verbose=True)
+    motorcontrol = pid.motorOutput(gain)
 
     if DRAWMARKERS:
         drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRANSFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
