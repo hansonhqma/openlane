@@ -210,6 +210,8 @@ def getBoundingBox(img, bottomcenter, w, h):
     length = 0
     xpos = 0
     for col in cols:
+        if col < 0 or col >= img.shape[1]:
+            continue
         column = img[:,col][bottomcenter[1]-h:bottomcenter[1]]
         sumvalue = np.sum(column)
         length += sumvalue

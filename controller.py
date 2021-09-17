@@ -48,10 +48,6 @@ class controller:
         return total_gain
 
     def motorOutput(self, gainvalue):
-        if gainvalue < 0: # increase left motor voltage
-            return self.base_dutycycle - gainvalue, self.base_dutycycle
-        elif gainvalue > 0: #increase right motor voltage
-            return self.base_dutycycle, self.base_dutycycle + gainvalue
-        else:
-            return self.base_dutycycle, self.base_dutycycle
+        return min(100,max(0,self.base_dutycycle - gainvalue)), min(100,max(0, self.base_dutycycle + gainvalue))
+        
     

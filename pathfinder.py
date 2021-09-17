@@ -6,34 +6,39 @@ import sys
 from collections import deque
 import time
 
+import motorcontrol
+
 # Telemetry
 
 FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((250,100,50), (250,100,50), 0.2, 0.8)
+pid = controller((300,50,350), (300,50,250), 0.3, 0.7)
+
+VOLTAGE_SCALE = 0.24
 
 # CV Hyperparameters
 
 SOURCE = "testfootage.mov"
+SOURCE = 0
 CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
 INITIAL_FRAME = True
 
-FRAME_SCALE = 1.5
+FRAME_SCALE = 2
 TRANSFORM_SCALING = 0.5
 TRANSFORM_VSHIFT = 30
 
-BOX_COUNT = 4
-BOX_WIDTH = 70
-BOX_MAX = 2
+BOX_COUNT = 3
+BOX_WIDTH = 90
+BOX_MAX = 3
 LANE_BOXES = []
 LANE_RESOLUTION = 5
 
 # These two arrays are points on camera calibrated image!
 TRANSFORM_PTS = np.array(([260,150],[395,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
-MASK_PTS = np.array([[210, 90],[409,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
+MASK_PTS = np.array([[50, 90],[569,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
 TRANSFORM_PTS = TRANSFORM_PTS.astype(np.int64)
 MASK_PTS = MASK_PTS.astype(np.int64)
 
@@ -46,6 +51,8 @@ HSV_MAX = (180,255,150)
 ARGS = sys.argv
 SHOWMASK = '-m' in ARGS
 DRAWMARKERS = '-d' in ARGS
+SHOW = '-s' in ARGS
+DRIVE = '-drive' in ARGS
 
 CALIBRATION_DATA = lib.getCameraMatrices(CALIBRATION_SOURCE, CALIBRATION_BOARD_SIZE)
 
@@ -78,7 +85,7 @@ BOX_HEIGHT = FRAME_HEIGHT//BOX_COUNT
 
 lane_start_positions = lib.binaryImageHistogram(transform, BOX_COUNT, LANE_RESOLUTION)
 for lane in lane_start_positions:
-    LANE_BOXES.append([lane for x in range(BOX_COUNT)])
+    LANE_BOXES.append([(lane[0], lane[1]-x*BOX_HEIGHT) for x in range(BOX_COUNT)])
 
 lane = LANE_BOXES[0] # temporary solution
 
@@ -113,7 +120,7 @@ while True:
     for i in range(1, len(lane)):
         if BOX_MAX!=-1 and i >= BOX_MAX:
             break
-        bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
+        bottom_center = [lane[i][0], lane[i][1]] # calculate next box pos based on previous box
         lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
         if DRAWMARKERS:
             drawn_lane_markers = cv.circle(drawn_lane_markers, lane[i], MARKER_SIZE, MARKER_COLOR, -1)
@@ -121,6 +128,7 @@ while True:
 
     vectorp1 = lane[0]
     vectorp2 = lane[BOX_MAX-1]
+    print(vectorp1,vectorp2)
     arrow = cv.arrowedLine(np.zeros(frame.shape), vectorp1, vectorp2, (0,255,0), thickness=2)
     if vectorp2[0]-vectorp1[0]==0:
         angular_trajectory = 0
@@ -130,7 +138,12 @@ while True:
     lateral_trajectory = 0.5 - vectorp1[0]/FRAME_WIDTH
 
     gain = pid.gain(angular_trajectory, lateral_trajectory, verbose=True)
-    motorcontrol = pid.motorOutput(gain)
+    motorgain = pid.motorOutput(gain)
+    print(motorgain)
+
+    if DRIVE:
+        motorcontrol.left.ChangeDutyCycle(VOLTAGE_SCALE * motorgain[0])
+        motorcontrol.right.ChangeDutyCycle(VOLTAGE_SCALE * motorgain[1])
 
     if DRAWMARKERS:
         drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRANSFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
@@ -139,18 +152,20 @@ while True:
     if SHOWMASK:
         frame = cv.polylines(frame, [MASK_PTS], True, (0,255,0))
 
-    cv.imshow("Undistorted raw feed", frame)
-    if DRAWMARKERS:
-        cv.imshow("Raw transformed feed", raw_transform)
+    if SHOW:
+        cv.imshow("Undistorted raw feed", frame)
+        if DRAWMARKERS:
+            cv.imshow("Raw transformed feed", raw_transform)
 
-    cv.imshow("Binary transform", transform)
-    cv.imshow("trajectory", arrow)
+        cv.imshow("Binary transform", transform)
+        cv.imshow("trajectory", arrow)
 
     time_delta = (time.clock_gettime_ns(time.CLOCK_REALTIME)-loop_start_time)/1000000000
     FRAMERATELOG.append(1/time_delta)
     
-    if cv.waitKey(1) & 0xFF==ord('q'):
-        break
+    if SHOW:
+        if cv.waitKey(1) & 0xFF==ord('q'):
+            break
 
 print("Average fps: {:.2f}".format(sum(FRAMERATELOG)/len(FRAMERATELOG)))
 
