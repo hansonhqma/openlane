@@ -14,9 +14,9 @@ FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((300,50,350), (300,50,250), 0.3, 0.7)
+pid = controller((200,50,100), (200,50,100), 0.3, 0.7)
 
-VOLTAGE_SCALE = 0.24
+VOLTAGE_SCALE = 0.6
 
 # CV Hyperparameters
 
@@ -32,13 +32,13 @@ TRANSFORM_VSHIFT = 30
 
 BOX_COUNT = 3
 BOX_WIDTH = 90
-BOX_MAX = 3
+BOX_MAX = 2
 LANE_BOXES = []
 LANE_RESOLUTION = 5
 
 # These two arrays are points on camera calibrated image!
 TRANSFORM_PTS = np.array(([260,150],[395,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
-MASK_PTS = np.array([[50, 90],[569,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
+MASK_PTS = np.array([[150, 90],[469,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
 TRANSFORM_PTS = TRANSFORM_PTS.astype(np.int64)
 MASK_PTS = MASK_PTS.astype(np.int64)
 
@@ -59,6 +59,10 @@ CALIBRATION_DATA = lib.getCameraMatrices(CALIBRATION_SOURCE, CALIBRATION_BOARD_S
 # capture source
 
 capture = cv.VideoCapture(SOURCE)
+
+# wait out the exposure adjustment for ~3 seconds
+
+time.sleep(3)
 
 # Pre-process initial frame
 
@@ -166,6 +170,8 @@ while True:
     if SHOW:
         if cv.waitKey(1) & 0xFF==ord('q'):
             break
+            motorcontrol.left.stop()
+            motorcontrol.right.stop()
 
 print("Average fps: {:.2f}".format(sum(FRAMERATELOG)/len(FRAMERATELOG)))
 

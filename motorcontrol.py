@@ -6,6 +6,10 @@ def l(val):
 def r(val):
     right.ChangeDutyCycle(val)
 
+def b(val):
+    left.ChangeDutyCycle(val)
+    right.ChangeDutyCycle(val)
+
 io.setmode(io.BCM)
 io.setwarnings(False)
 
