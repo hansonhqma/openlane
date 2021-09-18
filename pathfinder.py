@@ -14,9 +14,9 @@ FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((200,50,100), (200,50,100), 0.3, 0.7)
+pid = controller((200,50,150), (200,50,150), 0.4, 0.6)
 
-VOLTAGE_SCALE = 0.6
+VOLTAGE_SCALE = 0.75
 
 # CV Hyperparameters
 
@@ -45,8 +45,8 @@ MASK_PTS = MASK_PTS.astype(np.int64)
 MARKER_COLOR = (255,255,0)
 MARKER_SIZE = 2
 
-HSV_MIN = (0,0,0)
-HSV_MAX = (180,255,150)
+HSV_MIN = (0,0,18)
+HSV_MAX = (180,255,255)
 
 ARGS = sys.argv
 SHOWMASK = '-m' in ARGS
@@ -163,21 +163,15 @@ while True:
         if DRAWMARKERS:
             cv.imshow("Raw transformed feed", raw_transform)
 
-        cv.imshow("Binary transform", transform)
         cv.imshow("trajectory", arrow)
+    cv.imshow("Binary transform", transform)
 
     time_delta = (time.clock_gettime_ns(time.CLOCK_REALTIME)-loop_start_time)/1000000000
     FRAMERATELOG.append(1/time_delta)
     
-    if SHOW:
-        if cv.waitKey(1) & 0xFF==ord('q'):
-            break
-            motorcontrol.left.stop()
-            motorcontrol.right.stop()
+    if cv.waitKey(1) & 0xFF==ord('q'):
+        break
+        motorcontrol.left.stop()
+        motorcontrol.right.stop()
 
 print("Average fps: {:.2f}".format(sum(FRAMERATELOG)/len(FRAMERATELOG)))
-
-
-
-
-
