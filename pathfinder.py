@@ -60,9 +60,11 @@ CALIBRATION_DATA = lib.getCameraMatrices(CALIBRATION_SOURCE, CALIBRATION_BOARD_S
 
 capture = cv.VideoCapture(SOURCE)
 
-# wait out the exposure adjustment for ~3 seconds
+# wait out the exposure adjustment for ~50 frames
 
-time.sleep(3)
+for i in range(50):
+    ret, frame = capture.read()
+
 
 # Pre-process initial frame
 
