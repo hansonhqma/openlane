@@ -17,6 +17,7 @@ pid = controller((250,100,50), (250,100,50), 0.2, 0.8)
 # CV Hyperparameters
 
 SOURCE = "testfootage.mov"
+SOURCE = 0
 CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
 INITIAL_FRAME = True

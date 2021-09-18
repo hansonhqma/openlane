@@ -1,6 +1,7 @@
 import cv2 as cv
-import pathlibcv as lib
+import openlane as lib
 import os
+import sys
 import numpy as np
 import time
 from collections import deque
@@ -9,9 +10,7 @@ framerate = deque(maxlen=100)
 
 cmat, ncmat, dist, roi = lib.getCameraMatrices('calibration images', (4,7))
 
-capture = cv.VideoCapture(0)
-
-frame, uframe = 0,0
+capture = cv.VideoCapture(int(sys.argv[1]))
 
 while True:
     NS_TIME = time.clock_gettime_ns(time.CLOCK_REALTIME)
@@ -19,12 +18,9 @@ while True:
     if not ret:
         break
 
-    uframe = lib.undistort(frame, cmat, ncmat, dist, roi)
-
-    binary_image = lib.hsvThreshold(uframe, (0,0,0), (180,255,150))
+    uframe = lib.undistortFrame(frame, cmat, ncmat, dist, roi)
 
     cv.imshow('uframe', uframe)
-    cv.imshow('binary', binary_image)
 
     TIME_DELTA = (time.clock_gettime_ns(time.CLOCK_REALTIME)-NS_TIME)/1000000000
     framerate.append(1/TIME_DELTA)
