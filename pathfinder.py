@@ -14,9 +14,9 @@ FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((200,50,150), (200,50,150), 0.4, 0.6)
+pid = controller((200,200,300), (300,200,300), 0.3, 0.7)
 
-VOLTAGE_SCALE = 0.75
+VOLTAGE_SCALE = 0.6
 
 # CV Hyperparameters
 
@@ -30,23 +30,23 @@ FRAME_SCALE = 2
 TRANSFORM_SCALING = 0.5
 TRANSFORM_VSHIFT = 30
 
-BOX_COUNT = 3
-BOX_WIDTH = 90
-BOX_MAX = 2
+BOX_COUNT = 4
+BOX_WIDTH = 60
+BOX_MAX = 3
 LANE_BOXES = []
 LANE_RESOLUTION = 5
 
 # These two arrays are points on camera calibrated image!
-TRANSFORM_PTS = np.array(([260,150],[395,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
-MASK_PTS = np.array([[150, 90],[469,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
+TRANSFORM_PTS = np.array(([225,150],[384,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
+MASK_PTS = np.array([[100, 90],[469+50,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
 TRANSFORM_PTS = TRANSFORM_PTS.astype(np.int64)
 MASK_PTS = MASK_PTS.astype(np.int64)
 
 MARKER_COLOR = (255,255,0)
 MARKER_SIZE = 2
 
-HSV_MIN = (0,0,18)
-HSV_MAX = (180,255,255)
+HSV_MIN = (0,0,0)
+HSV_MAX = (180,255,120)
 
 ARGS = sys.argv
 SHOWMASK = '-m' in ARGS
@@ -126,7 +126,7 @@ while True:
     for i in range(1, len(lane)):
         if BOX_MAX!=-1 and i >= BOX_MAX:
             break
-        bottom_center = [lane[i][0], lane[i][1]] # calculate next box pos based on previous box
+        bottom_center = [lane[i-1][0], lane[i-1][1]-BOX_HEIGHT] # calculate next box pos based on previous box
         lane[i] = lib.getBoundingBox(transform, bottom_center, BOX_WIDTH, BOX_HEIGHT)
         if DRAWMARKERS:
             drawn_lane_markers = cv.circle(drawn_lane_markers, lane[i], MARKER_SIZE, MARKER_COLOR, -1)
