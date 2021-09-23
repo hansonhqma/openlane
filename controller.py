@@ -47,7 +47,7 @@ class controller:
         
         return total_gain
 
-    def motorOutput(self, gainvalue):
-        return min(100,max(0,self.base_dutycycle - gainvalue)), min(100,max(0, self.base_dutycycle + gainvalue))
+    def motorOutput(self, gainvalue, scaling):
+        return min(100,max(0,(self.base_dutycycle - gainvalue)*scaling)), min(100,max(0, (self.base_dutycycle + gainvalue)*scaling))
         
     

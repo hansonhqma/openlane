@@ -14,13 +14,12 @@ FRAMERATELOG = deque(maxlen=100)
 
 # Controller
 
-pid = controller((200,200,300), (300,200,300), 0.3, 0.7)
+pid = controller((250,100,300), (250,0,250), 0.3, 0.7)
 
-VOLTAGE_SCALE = 0.6
+VOLTAGE_SCALE = 1
 
 # CV Hyperparameters
 
-SOURCE = "testfootage.mov"
 SOURCE = 0
 CALIBRATION_SOURCE = "calibration images"
 CALIBRATION_BOARD_SIZE = (4,7)
@@ -37,8 +36,8 @@ LANE_BOXES = []
 LANE_RESOLUTION = 5
 
 # These two arrays are points on camera calibrated image!
-TRANSFORM_PTS = np.array(([225,150],[384,150],[420,203],[244,203]))//FRAME_SCALE # corners of square on surface
-MASK_PTS = np.array([[100, 90],[469+50,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
+TRANSFORM_PTS = np.array(([225,150],[394,150],[404,203],[215,203]))//FRAME_SCALE # corners of square on surface
+MASK_PTS = np.array([[0, 90],[619,90],[619, 345],[0, 345]])//FRAME_SCALE # corners of mask
 TRANSFORM_PTS = TRANSFORM_PTS.astype(np.int64)
 MASK_PTS = MASK_PTS.astype(np.int64)
 
@@ -144,12 +143,12 @@ while True:
     lateral_trajectory = 0.5 - vectorp1[0]/FRAME_WIDTH
 
     gain = pid.gain(angular_trajectory, lateral_trajectory, verbose=True)
-    motorgain = pid.motorOutput(gain)
+    motorgain = pid.motorOutput(gain, VOLTAGE_SCALE)
     print(motorgain)
 
     if DRIVE:
-        motorcontrol.left.ChangeDutyCycle(VOLTAGE_SCALE * motorgain[0])
-        motorcontrol.right.ChangeDutyCycle(VOLTAGE_SCALE * motorgain[1])
+        motorcontrol.left.ChangeDutyCycle(motorgain[0])
+        motorcontrol.right.ChangeDutyCycle(motorgain[1])
 
     if DRAWMARKERS:
         drawn_lane_markers = lib.squarePerspectiveTransform(drawn_lane_markers, TRANSFORM_PTS, TRANSFORM_VSHIFT, SCALING=TRANSFORM_SCALING, reverse=True)
@@ -164,7 +163,7 @@ while True:
             cv.imshow("Raw transformed feed", raw_transform)
 
         cv.imshow("trajectory", arrow)
-    cv.imshow("Binary transform", transform)
+        cv.imshow("Binary transform", transform)
 
     time_delta = (time.clock_gettime_ns(time.CLOCK_REALTIME)-loop_start_time)/1000000000
     FRAMERATELOG.append(1/time_delta)
